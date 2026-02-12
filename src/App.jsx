@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 const generateId = () => Math.random().toString(36).slice(2, 10);
 
@@ -425,11 +425,45 @@ const SummarySection = ({ data, onChange }) => (
 // --- Main App ---
 
 export default function RequirementAnalyzer() {
-  const [analyses, setAnalyses] = useState([createBlankAnalysis("Sample: Dark Mode Toggle")]);
+  const [analyses, setAnalyses] = useState(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem('requirement-analyses');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return [createBlankAnalysis("Sample: Dark Mode Toggle")];
+  });
   const [activeId, setActiveId] = useState(analyses[0].id);
   const [activeSection, setActiveSection] = useState("overview");
   const [showExport, setShowExport] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+
+  // Save to localStorage whenever analyses change
+  useEffect(() => {
+    localStorage.setItem('requirement-analyses', JSON.stringify(analyses));
+  }, [analyses]);
+
+  // Load analysis from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedData = params.get('shared');
+    if (sharedData) {
+      try {
+        const decoded = JSON.parse(atob(sharedData));
+        if (decoded.id) {
+          setAnalyses(prev => [decoded, ...prev]);
+          setActiveId(decoded.id);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (e) {
+        console.error('Failed to load shared analysis:', e);
+      }
+    }
+  }, []);
 
   const active = useMemo(() => analyses.find((a) => a.id === activeId), [analyses, activeId]);
 
@@ -499,6 +533,23 @@ export default function RequirementAnalyzer() {
     URL.revokeObjectURL(url);
   };
 
+  const handleShareLink = () => {
+    if (!active) return;
+    const encoded = btoa(JSON.stringify(active));
+    const baseUrl = window.location.origin + window.location.pathname;
+    const url = `${baseUrl}?shared=${encoded}`;
+    setShareUrl(url);
+    setShowShareModal(true);
+  };
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   if (!active) return null;
 
   const completion = getCompletion(active);
@@ -565,6 +616,9 @@ export default function RequirementAnalyzer() {
             })}
           </div>
           <div className="px-4 py-3 border-t border-slate-100 space-y-2">
+            <button onClick={handleShareLink} className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+              📋 Share Link
+            </button>
             <button onClick={handleExportMd} className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
               Export as Markdown
             </button>
@@ -622,6 +676,43 @@ export default function RequirementAnalyzer() {
           </div>
         </div>
       </div>
+
+      {/* Share Link Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-8" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">Share Analysis</h3>
+              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-4">
+                Share this link with your colleague. They'll get a copy of this analysis that they can edit independently.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 font-mono"
+                  onClick={(e) => e.target.select()}
+                />
+                <button
+                  onClick={copyShareLink}
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                >
+                  Copy Link
+                </button>
+              </div>
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800">
+                  <strong>Note:</strong> Each person will have their own copy. Changes won't sync automatically. For real-time collaboration, consider using Firebase.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Markdown Export Modal */}
       {showExport && (
