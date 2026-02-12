@@ -616,8 +616,8 @@ export default function RequirementAnalyzer() {
             })}
           </div>
           <div className="px-4 py-3 border-t border-slate-100 space-y-2">
-            <button onClick={handleShareLink} className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-              📋 Share Link
+            <button onClick={handleShareLink} className="w-full py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+              Share Link
             </button>
             <button onClick={handleExportMd} className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
               Export as Markdown
@@ -699,7 +699,7 @@ export default function RequirementAnalyzer() {
                 />
                 <button
                   onClick={copyShareLink}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                  className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors whitespace-nowrap"
                 >
                   Copy Link
                 </button>
