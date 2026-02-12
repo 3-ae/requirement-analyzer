@@ -575,7 +575,7 @@ export default function RequirementAnalyzer() {
         <div className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
           <div className="px-4 py-4 border-b border-slate-100">
             <div className="flex items-center justify-between mb-3">
-              <h1 className="text-sm font-bold text-slate-800 tracking-tight">Requirement Analyzer</h1>
+              <h1 className="text-sm font-bold text-slate-800 tracking-tight">Product Design Requirement Analyzer</h1>
               <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-600 text-sm">◀</button>
             </div>
             <button

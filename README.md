@@ -1,4 +1,4 @@
-# Requirement Analyzer
+# Product Design Requirement Analyzer
 
 A comprehensive React application for analyzing product requirements with structured sections covering overview, problem statement, user context, assumptions, edge cases, scope, open questions, and summary.
 
