@@ -18,12 +18,12 @@ const ORIGIN_OPTIONS = [
   "Stakeholder Request", "Technical Debt", "Other",
 ];
 
-const VERSION_PHASES = ["MVP", "V1", "V1.1", "V2", "Future", "Cut"];
+const VERSION_PHASES = ["MVP", "V1", "V2", "V3", "Future", "Cut"];
 const VERSION_COLORS = {
   MVP: { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200", dot: "bg-violet-500" },
   V1: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500" },
-  "V1.1": { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-200", dot: "bg-sky-500" },
   V2: { bg: "bg-teal-100", text: "text-teal-700", border: "border-teal-200", dot: "bg-teal-500" },
+  V3: { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-200", dot: "bg-sky-500" },
   Future: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
   Cut: { bg: "bg-red-50", text: "text-red-500", border: "border-red-200", dot: "bg-red-400" },
 };
