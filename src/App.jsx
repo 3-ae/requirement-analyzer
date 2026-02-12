@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 const generateId = () => Math.random().toString(36).slice(2, 10);
 
@@ -662,12 +662,44 @@ const SummarySection = ({ data, onChange }) => (
 // --- Main App ---
 
 export default function RequirementAnalyzer() {
-  const [analyses, setAnalyses] = useState([createBlankAnalysis("Sample: Dark Mode Toggle")]);
-  const [activeId, setActiveId] = useState(analyses[0].id);
+  const [analyses, setAnalyses] = useState(() => {
+    const saved = localStorage.getItem("requirementAnalyses");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : [createBlankAnalysis("Sample: Dark Mode Toggle")];
+      } catch {
+        return [createBlankAnalysis("Sample: Dark Mode Toggle")];
+      }
+    }
+    return [createBlankAnalysis("Sample: Dark Mode Toggle")];
+  });
+  const [activeId, setActiveId] = useState(() => analyses[0]?.id);
   const [activeSection, setActiveSection] = useState("overview");
   const [showExport, setShowExport] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [phaseFilter, setPhaseFilter] = useState("All");
+
+  // Load from URL share link on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedData = params.get("data");
+    if (sharedData) {
+      try {
+        const decoded = JSON.parse(atob(sharedData));
+        setAnalyses([decoded]);
+        setActiveId(decoded.id);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (err) {
+        console.error("Failed to decode shared link:", err);
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever analyses change
+  useEffect(() => {
+    localStorage.setItem("requirementAnalyses", JSON.stringify(analyses));
+  }, [analyses]);
 
   const active = useMemo(() => analyses.find((a) => a.id === activeId), [analyses, activeId]);
 
@@ -728,12 +760,19 @@ export default function RequirementAnalyzer() {
 
   const handleExportJson = () => {
     if (!active) return;
-    const json = JSON.stringify(active, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${active.name.replace(/\s+/g, "-").toLowerCase()}.json`;
-    a.click(); URL.revokeObjectURL(url);
+    const encoded = btoa(JSON.stringify(active));
+    const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+    navigator.clipboard.writeText(url).then(() => {
+      alert("Share link copied to clipboard! Anyone with this link can view this analysis.");
+    }).catch(() => {
+      // Fallback: download as JSON if clipboard fails
+      const json = JSON.stringify(active, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl; a.download = `${active.name.replace(/\s+/g, "-").toLowerCase()}.json`;
+      a.click(); URL.revokeObjectURL(blobUrl);
+    });
   };
 
   if (!active) return null;
@@ -852,7 +891,7 @@ export default function RequirementAnalyzer() {
               Export as Markdown
             </button>
             <button onClick={handleExportJson} className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-              Export as JSON
+              Share Link
             </button>
           </div>
         </div>
