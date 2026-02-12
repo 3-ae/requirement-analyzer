@@ -326,34 +326,34 @@ function App() {
   if (!active) return <div className="p-4">Loading...</div>;
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-lg font-bold text-gray-900">Requirement Analyzer</h1>
+    <div className="h-screen flex overflow-hidden bg-gray-100">
+      <aside className="w-64 bg-slate-800 flex flex-col">
+        <div className="p-4 border-b border-slate-700">
+          <h1 className="text-lg font-bold text-slate-100">Requirement Analyzer</h1>
           <button
             onClick={handleNewAnalysis}
-            className="mt-2 w-full bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700"
+            className="mt-3 w-full bg-slate-700 text-white px-3 py-2 rounded-md text-sm hover:bg-slate-600 font-medium"
           >
             + New Analysis
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-3">
           {analyses.map(a => {
             const completion = getCompletion(a);
             return (
               <div
                 key={a.id}
-                className={`p-2 mb-1 rounded cursor-pointer group relative ${
-                  a.id === activeId ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+                className={`p-3 mb-2 rounded-md cursor-pointer group relative ${
+                  a.id === activeId ? "bg-slate-700" : "hover:bg-slate-700/50"
                 }`}
                 onClick={() => setActiveId(a.id)}
               >
-                <div className="text-sm font-medium text-gray-900 truncate">{a.name}</div>
-                <div className="text-xs text-gray-500">{completion}% complete</div>
+                <div className="text-sm font-medium text-slate-100 truncate">{a.name}</div>
+                <div className="text-xs text-slate-400">{completion}% complete</div>
                 {analyses.length > 1 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteAnalysis(a.id); }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 text-xs"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs"
                   >
                     ✕
                   </button>
@@ -362,24 +362,24 @@ function App() {
             );
           })}
         </div>
-        <div className="p-4 border-t border-gray-200 space-y-2">
-          <button
-            onClick={handleShareLink}
-            className="w-full bg-gray-900 text-white px-3 py-2 rounded text-sm hover:bg-gray-800"
-          >
-            Share Link
-          </button>
+        <div className="p-4 border-t border-slate-700 space-y-2">
           <button
             onClick={handleExport}
-            className="w-full border border-gray-300 bg-white px-3 py-2 rounded text-sm hover:bg-gray-50"
+            className="w-full bg-slate-700 text-slate-200 px-3 py-2 rounded-md text-sm hover:bg-slate-600 font-medium"
           >
-            Export Markdown
+            Export as Markdown
+          </button>
+          <button
+            onClick={handleShareLink}
+            className="w-full bg-slate-700 text-slate-200 px-3 py-2 rounded-md text-sm hover:bg-slate-600 font-medium"
+          >
+            Export as JSON
           </button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <input
             type="text"
             value={active.name}
@@ -387,62 +387,65 @@ function App() {
             className="text-xl font-bold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0"
             placeholder="Analysis Name"
           />
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-medium">
-              {totalCompletion}% Complete
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="text-gray-400">
+              {totalCompletion}%
             </span>
           </div>
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="w-56 bg-white border-r border-gray-200 overflow-y-auto py-4">
-            <div className="px-3 mb-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Sections</h3>
+          <nav className="bg-gray-50 border-r border-gray-200 overflow-y-auto">
+            <div className="flex border-b border-gray-200">
               {SECTIONS.map(sec => {
-                const comp = getSectionCompletion(sec.id, active);
-                const isCount = comp?.isCount;
-                const displayValue = isCount ? comp.value : comp;
-                const label = isCount ? `${displayValue}` : `${displayValue}%`;
                 const isActive = activeSection === sec.id;
                 return (
                   <button
                     key={sec.id}
                     onClick={() => setActiveSection(sec.id)}
-                    className={`w-full text-left px-3 py-2 rounded mb-1 flex items-center justify-between group ${
-                      isActive ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700 hover:bg-gray-100"
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
+                      isActive 
+                        ? "border-slate-900 text-slate-900" 
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg">{sec.icon}</span>
-                      <span className="text-sm">{sec.label}</span>
-                    </span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${isActive ? "bg-indigo-100" : "bg-gray-100"}`}>
-                      {label}
-                    </span>
+                    <span>{sec.icon}</span>
+                    <span>{sec.label}</span>
                   </button>
                 );
               })}
             </div>
             {activeSection === "scope" && active.scope?.items && active.scope.items.length > 0 && (
-              <div className="px-3 mt-6 pt-4 border-t border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Filter by Phase</h3>
-                {["All", ...VERSION_PHASES, "Untagged"].map(phase => (
-                  <button
-                    key={phase}
-                    onClick={() => setPhaseFilter(phase)}
-                    className={`w-full text-left px-3 py-1.5 rounded mb-1 text-sm flex items-center justify-between ${
-                      phaseFilter === phase ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    <span>{phase}</span>
-                    <span className="text-xs text-gray-500">{phaseCounts[phase] || 0}</span>
-                  </button>
-                ))}
+              <div className="px-4 py-4 bg-white border-t border-gray-200">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Filter by Phase</h3>
+                <div className="flex flex-wrap gap-2">
+                  {["All", ...VERSION_PHASES, "Untagged"].map(phase => {
+                    const colors = VERSION_COLORS[phase];
+                    return (
+                      <button
+                        key={phase}
+                        onClick={() => setPhaseFilter(phase)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${
+                          phaseFilter === phase 
+                            ? colors ? `${colors.bg} ${colors.text} ${colors.border} border` : "bg-slate-700 text-white"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        <span>{phase}</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                          phaseFilter === phase ? "bg-white/20" : "bg-gray-200"
+                        }`}>
+                          {phaseCounts[phase] || 0}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </nav>
 
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-8 bg-white">
             {activeSection === "overview" && <OverviewSection active={active} updateActive={updateActive} />}
             {activeSection === "problem" && <ProblemSection active={active} updateActive={updateActive} />}
             {activeSection === "context" && <ContextSection active={active} updateActive={updateActive} />}
@@ -461,68 +464,58 @@ function App() {
 function OverviewSection({ active, updateActive }) {
   const o = active.overview;
   return (
-    <div className="max-w-4xl space-y-4">
+    <div className="max-w-4xl space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Overview</h2>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Feature Name</label>
-        <input
-          type="text"
-          value={o.featureName}
-          onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, featureName: e.target.value } }))}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-        />
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Overview</h2>
+        <p className="text-sm text-gray-500">Basic information about the feature requirement.</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Feature Name</label>
+          <input
+            type="text"
+            value={o.featureName}
+            onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, featureName: e.target.value } }))}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
           <input
             type="text"
             value={o.date}
             onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, date: e.target.value } }))}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
           />
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Requestor</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Requestor / Source</label>
           <input
             type="text"
             value={o.requestor}
             onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, requestor: e.target.value } }))}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
           />
         </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Origin</label>
-        <div className="flex flex-wrap gap-2">
-          {ORIGIN_OPTIONS.map(opt => (
-            <button
-              key={opt}
-              onClick={() => updateActive(a => ({ ...a, overview: { ...a.overview, origin: opt } }))}
-              className={`px-3 py-1.5 rounded text-sm border ${
-                o.origin === opt
-                  ? "bg-indigo-100 text-indigo-700 border-indigo-300 font-medium"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              {opt}
-            </button>
-          ))}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Requirement Origin</label>
+          <select
+            value={o.origin}
+            onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, origin: e.target.value } }))}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+          >
+            <option value="">Select...</option>
+            {ORIGIN_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea
-          value={o.description}
-          onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, description: e.target.value } }))}
-          rows={4}
-          className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Phase</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Target Version</label>
+        <p className="text-xs text-gray-500 mb-3">Which release phase is this analysis targeting?</p>
         <div className="flex flex-wrap gap-2">
           {VERSION_PHASES.map(phase => {
             const colors = VERSION_COLORS[phase];
@@ -530,9 +523,9 @@ function OverviewSection({ active, updateActive }) {
               <button
                 key={phase}
                 onClick={() => updateActive(a => ({ ...a, phase }))}
-                className={`px-3 py-1.5 rounded text-sm border ${
+                className={`px-4 py-2 rounded-md text-sm font-medium border ${
                   active.phase === phase
-                    ? `${colors.bg} ${colors.text} ${colors.border} font-medium`
+                    ? `${colors.bg} ${colors.text} ${colors.border}`
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -541,6 +534,16 @@ function OverviewSection({ active, updateActive }) {
             );
           })}
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Brief Description</label>
+        <p className="text-xs text-gray-500 mb-3">What is this feature in one or two sentences?</p>
+        <textarea
+          value={o.description}
+          onChange={e => updateActive(a => ({ ...a, overview: { ...a.overview, description: e.target.value } }))}
+          rows={4}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+        />
       </div>
     </div>
   );
