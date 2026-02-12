@@ -5,10 +5,25 @@ A comprehensive React application for analyzing product requirements with struct
 ## Features
 
 - 📝 Multi-section requirement analysis workflow
-- 💾 Export to Markdown or JSON
+- � **Share via URL** - Collaborate by sharing links with colleagues
+- 💾 **Auto-save** - Changes persist automatically to localStorage
+- 📤 Export to Markdown or JSON
 - 📊 Progress tracking across sections
 - 🎯 Manage multiple analyses simultaneously
 - ✨ Clean, modern UI with Tailwind CSS
+
+## Collaboration
+
+### Share Link (Quick Collaboration)
+1. Click **"📋 Share Link"** in the sidebar
+2. Copy the generated link
+3. Send to your colleague via Slack, email, etc.
+4. They'll get a copy they can edit independently
+
+**Note:** Shared analyses are independent copies. Changes won't sync automatically between users.
+
+### For Real-Time Collaboration
+For simultaneous editing with live sync (like Google Docs), consider integrating Firebase or Supabase. The app architecture supports this with minimal changes.
 
 ## Getting Started
 
