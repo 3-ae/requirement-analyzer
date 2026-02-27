@@ -2910,6 +2910,45 @@ const PasteAnalyzeModal = ({
                   </div>
                 )}
                 
+                {results.acceptanceCriteria && Array.isArray(results.acceptanceCriteria) && results.acceptanceCriteria.length > 0 && (
+                  <div className="border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 bg-emerald-50 dark:bg-emerald-900/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-800 rounded">Acceptance Criteria</span>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{results.acceptanceCriteria.length} item(s)</span>
+                      </div>
+                      <button
+                        onClick={() => onDeleteField('acceptanceCriteria')}
+                        className="text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        title="Delete this field"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
+                      {results.acceptanceCriteria.map((item, i) => (
+                        <div key={i} className="flex items-start justify-between gap-2 p-2 border border-emerald-200 dark:border-emerald-700 rounded bg-white dark:bg-slate-800">
+                          <span className="flex-1">{item}</span>
+                          <button
+                            onClick={() => {
+                              const newCriteria = results.acceptanceCriteria.filter((_, index) => index !== i);
+                              if (newCriteria.length === 0) {
+                                onDeleteField('acceptanceCriteria');
+                              } else {
+                                onUpdateField('acceptanceCriteria', newCriteria);
+                              }
+                            }}
+                            className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 text-lg px-1 transition-colors shrink-0"
+                            title="Delete this criterion"
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {results.actions && Array.isArray(results.actions) && results.actions.length > 0 && (
                   <div className="border border-indigo-200 rounded-lg p-3 bg-indigo-50">
                     <div className="flex items-center justify-between mb-1">
