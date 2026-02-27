@@ -170,6 +170,7 @@ const TRANSLATIONS = {
       assumptions: "Assumptions",
       edges: "Edge Cases",
       scope: "Scope & Versions",
+      acceptance: "Acceptance Criteria",
       questions: "Open Questions",
       notes: "Notes",
       summary: "Summary",
@@ -205,8 +206,9 @@ const TRANSLATIONS = {
       assumptions: "Antagelser",
       edges: "Særtilfælde",
       scope: "Omfang & Versioner",
+      acceptance: "Acceptkriterier",
       questions: "Åbne Spørgsmål",
-      notes: "Noter",
+      noter: "Noter",
       summary: "Opsummering",
       mapping: "Kortlægning"
     },
@@ -240,6 +242,7 @@ const TRANSLATIONS = {
       assumptions: "Antaganden",
       edges: "Specialfall",
       scope: "Omfattning & Versioner",
+      acceptance: "Acceptanskriterier",
       questions: "Öppna Frågor",
       notes: "Anteckningar",
       summary: "Sammanfattning",
@@ -276,6 +279,7 @@ const SECTIONS = [
   { id: "assumptions", label: "Assumptions", icon: "◇" },
   { id: "edges", label: "Edge Cases", icon: "◆" },
   { id: "scope", label: "Scope & Versions", icon: "◫" },
+  { id: "acceptance", label: "Acceptance Criteria", icon: "◈" },
   { id: "questions", label: "Open Questions", icon: "◻" },
   { id: "notes", label: "Notes", icon: "◐" },
   { id: "mapping", label: "Mapping", icon: "◱" },
@@ -341,6 +345,7 @@ const createBlankAnalysis = (name = "Untitled Design Task") => ({
     items: [],
   },
   questions: [],
+  acceptanceCriteria: [],
   actions: [],
   mapping: { figmaUrl: "https://embed.figma.com/board/JiPxw8hWqRLsTs2cpUFU7O/Figjam-Concept?node-id=378-61&embed-host=share" },
   notes: "",
@@ -663,7 +668,7 @@ const analyzePastedText = async (text, githubAIKey) => {
         model: 'gpt-4o',
         messages: [{
           role: 'system',
-          content: 'You are analyzing pasted text (like Jira tickets, requirements docs, emails, etc). Extract structured information and return ONLY a valid JSON object (no markdown, no code blocks, no explanation). Use these fields (omit if not found): featureName (short title), date (any date mentioned), requestor (who requested/stakeholders), origin (one of: User Research, Business Metric, Competitor Analysis, Stakeholder Request, Technical Debt, Legal, Other), description (brief summary), problem (problem statement), who (target users), outcome (business outcome), segments (user segments), workflow (current workflow), assumptions (array of strings), questions (array of strings), actions (array of requirement analysis tasks like "Schedule user interview", "Review competitor solutions", "Create user flow", NOT implementation/development tasks), notes (array of additional points). Return raw JSON only.'
+          content: 'You are analyzing pasted text (like Jira tickets, requirements docs, emails, etc). Extract structured information and return ONLY a valid JSON object (no markdown, no code blocks, no explanation). Use these fields (omit if not found): featureName (short title), date (any date mentioned), requestor (who requested/stakeholders), origin (one of: User Research, Business Metric, Competitor Analysis, Stakeholder Request, Technical Debt, Legal, Other), description (brief summary), problem (problem statement), who (target users), outcome (business outcome), segments (user segments), workflow (current workflow), assumptions (array of strings), questions (array of strings), acceptanceCriteria (array of strings describing what must be true for feature to be complete), actions (array of requirement analysis tasks like "Schedule user interview", "Review competitor solutions", "Create user flow", NOT implementation/development tasks), notes (array of additional points). Return raw JSON only.'
         }, {
           role: 'user',
           content: text
@@ -771,6 +776,7 @@ function getSectionCompletion(analysis, sectionId) {
       total++; if (analysis.scope.items.length > 0) filled++;
       break;
     case "questions": total = 1; if (analysis.questions.length > 0) filled = 1; break;
+    case "acceptance": total = 1; if ((analysis.acceptanceCriteria || []).length > 0) filled = 1; break;
     case "actions": total = 1; if ((analysis.actions || []).length > 0) filled = 1; break;
     case "mapping": 
       total = 1; 
@@ -837,6 +843,23 @@ function exportToMarkdown(a) {
         const priority = item.priority ? ` [${item.priority}]` : "";
         lines.push(`- ${item.item}${priority}${item.description ? ` — ${item.description}` : ""}`);
       });
+    });
+  }
+
+  h("Acceptance Criteria");
+  if (!a.acceptanceCriteria || a.acceptanceCriteria.length === 0) lines.push("*No acceptance criteria defined yet.*");
+  else {
+    const priorities = ["Must Have", "Should Have", "Nice to Have"];
+    priorities.forEach(priority => {
+      const items = a.acceptanceCriteria.filter(c => c.priority === priority);
+      if (items.length > 0) {
+        lines.push(`\n**${priority}**`);
+        items.forEach((c, i) => {
+          const status = c.status === "Done" ? "X" : c.status === "In Progress" ? "~" : " ";
+          lines.push(`${i + 1}. [${status}] ${c.text}`);
+          if (c.notes?.trim()) lines.push(`   - ${c.notes}`);
+        });
+      }
     });
   }
 
@@ -958,6 +981,28 @@ function importFromMarkdown(markdown) {
               completed: match[1].trim() === "X",
               note: ""
             });
+          }
+        });
+        break;
+        
+      case "Acceptance Criteria":
+        let currentPriority = "Must Have";
+        buffer.forEach(line => {
+          if (line.startsWith("**Must Have**")) currentPriority = "Must Have";
+          else if (line.startsWith("**Should Have**")) currentPriority = "Should Have";
+          else if (line.startsWith("**Nice to Have**")) currentPriority = "Nice to Have";
+          else {
+            const match = line.match(/^\d+\.\s*\[([^\]]+)\]\s*(.+)/);
+            if (match) {
+              const status = match[1].trim() === "X" ? "Done" : match[1].trim() === "~" ? "In Progress" : "Not Started";
+              analysis.acceptanceCriteria.push({
+                id: generateId(),
+                text: match[2].trim(),
+                priority: currentPriority,
+                status: status,
+                notes: ""
+              });
+            }
           }
         });
         break;
@@ -1651,6 +1696,191 @@ const ScopeSection = ({ data, language, onChange }) => {
   );
 };
 
+const AcceptanceCriteriaSection = ({ data, language, onChange }) => {
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
+  const [statusFilter, setStatusFilter] = useState("Not Started");
+  
+  const addItem = () =>
+    onChange([...data, { 
+      id: generateId(), 
+      text: "", 
+      priority: "Must Have", 
+      status: "Not Started",
+      notes: "" 
+    }]);
+    
+  const updateItem = (id, field, val) =>
+    onChange(data.map((item) => (item.id === id ? { ...item, [field]: val } : item)));
+    
+  const removeItem = (id) => onChange(data.filter((item) => item.id !== id));
+
+  const autoResize = (e) => {
+    e.target.style.height = "auto";
+    e.target.style.height = e.target.scrollHeight + "px";
+  };
+
+  const textareaRef = (el) => {
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  };
+
+  const priorities = ["Must Have", "Should Have", "Nice to Have"];
+  const statuses = ["Not Started", "In Progress", "Done"];
+  
+  // Filter by status
+  const filteredData = data.filter(item => item.status === statusFilter);
+  
+  // Group by priority
+  const groupedByPriority = priorities.reduce((acc, priority) => {
+    acc[priority] = filteredData.filter(item => item.priority === priority);
+    return acc;
+  }, {});
+
+  const notStartedCount = data.filter(c => c.status === "Not Started").length;
+  const inProgressCount = data.filter(c => c.status === "In Progress").length;
+  const doneCount = data.filter(c => c.status === "Done").length;
+
+  const renderCriterion = (item, index) => (
+    <div key={item.id} className={`p-3 rounded-lg border ${
+      item.status === "Done" 
+        ? "bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-200/60 dark:border-emerald-800/40" 
+        : item.status === "In Progress"
+        ? "bg-blue-50/30 dark:bg-blue-900/10 border-blue-200/60 dark:border-blue-800/40"
+        : "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
+    }`}>
+      <div className="flex gap-2 items-start">
+        <span className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-mono w-5 shrink-0">{index + 1}</span>
+        <div className="flex-1 space-y-2">
+          <textarea
+            ref={textareaRef}
+            className="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500 resize-none overflow-hidden"
+            style={{ minHeight: "36px" }}
+            placeholder="Define an acceptance criterion..."
+            value={item.text}
+            onChange={(e) => {
+              updateItem(item.id, "text", e.target.value);
+              autoResize(e);
+            }}
+            onInput={autoResize}
+            rows={1}
+          />
+          <div className="flex gap-2 flex-wrap items-center">
+            <select
+              value={item.priority}
+              onChange={(e) => updateItem(item.id, "priority", e.target.value)}
+              className="text-xs px-2 py-1 border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500"
+            >
+              {priorities.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <select
+              value={item.status}
+              onChange={(e) => updateItem(item.id, "status", e.target.value)}
+              className="text-xs px-2 py-1 border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500"
+            >
+              {statuses.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => removeItem(item.id)}
+              className="text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 text-lg px-1 ml-auto"
+            >×</button>
+          </div>
+          {item.notes !== undefined && (
+            <textarea
+              ref={textareaRef}
+              className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500 resize-none overflow-hidden"
+              style={{ minHeight: "32px" }}
+              placeholder="Additional notes or context..."
+              value={item.notes}
+              onChange={(e) => {
+                updateItem(item.id, "notes", e.target.value);
+                autoResize(e);
+              }}
+              onInput={autoResize}
+              rows={1}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <SectionHeader 
+        title={t.sections.acceptance || "Acceptance Criteria"} 
+        description="What must be true for this feature to be considered complete and successful?" 
+      />
+      {data.length > 0 && (
+        <div className="mb-4">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setStatusFilter("Not Started")}
+              className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                statusFilter === "Not Started"
+                  ? "bg-slate-800 dark:bg-slate-600 text-white"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+            >
+              Not Started {notStartedCount > 0 && `(${notStartedCount})`}
+            </button>
+            <button
+              onClick={() => setStatusFilter("In Progress")}
+              className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                statusFilter === "In Progress"
+                  ? "bg-slate-800 dark:bg-slate-600 text-white"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+            >
+              In Progress {inProgressCount > 0 && `(${inProgressCount})`}
+            </button>
+            <button
+              onClick={() => setStatusFilter("Done")}
+              className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                statusFilter === "Done"
+                  ? "bg-slate-800 dark:bg-slate-600 text-white"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+            >
+              Done {doneCount > 0 && `(${doneCount})`}
+            </button>
+          </div>
+        </div>
+      )}
+      {data.length === 0 && (
+        <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm border border-dashed border-slate-200 dark:border-slate-600 rounded-lg mb-4">
+          No acceptance criteria defined yet.
+        </div>
+      )}
+      <div className="space-y-4 mb-4">
+        {priorities.map(priority => {
+          const items = groupedByPriority[priority];
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={priority} className="space-y-3">
+              <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                {priority}
+              </h3>
+              {items.map((item, i) => renderCriterion(item, i))}
+            </div>
+          );
+        })}
+      </div>
+      <button 
+        onClick={addItem} 
+        className="text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 hover:border-slate-400 dark:hover:border-slate-500 transition-colors"
+      >
+        + Add criterion
+      </button>
+    </div>
+  );
+};
+
 const QuestionsSection = ({ data, language, onChange }) => {
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
   const [statusFilter, setStatusFilter] = useState("Open");
@@ -2015,9 +2245,6 @@ const SummarySection = ({ data, language, onChange, onGenerateAIBrief }) => {
         onClick={onGenerateAIBrief}
         className="w-full px-4 py-3 text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 dark:from-purple-700 dark:to-blue-700 dark:hover:from-purple-800 dark:hover:to-blue-800 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-        </svg>
         Create Design Brief for AI
       </button>
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
@@ -2121,6 +2348,7 @@ const PasteAnalyzeModal = ({
   githubAIKey,
   onSetGitHubAIKey,
   onDeleteField,
+  onUpdateField,
   pastedImage,
   onImageChange,
   onImageAnalyze,
@@ -2621,9 +2849,23 @@ const PasteAnalyzeModal = ({
                         </svg>
                       </button>
                     </div>
-                    <div className="text-sm text-slate-700">
+                    <div className="text-sm text-slate-700 space-y-2">
                       {results.assumptions.map((item, i) => (
-                        <div key={i}>• {item}</div>
+                        <div key={i} className="flex items-start justify-between gap-2 p-2 border border-orange-200 rounded bg-white">
+                          <span className="flex-1">{item}</span>
+                          <button
+                            onClick={() => {
+                              const newAssumptions = results.assumptions.filter((_, index) => index !== i);
+                              if (newAssumptions.length === 0) {
+                                onDeleteField('assumptions');
+                              } else {
+                                onUpdateField('assumptions', newAssumptions);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-red-500 text-lg px-1 transition-colors shrink-0"
+                            title="Delete this assumption"
+                          >×</button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -2646,9 +2888,23 @@ const PasteAnalyzeModal = ({
                         </svg>
                       </button>
                     </div>
-                    <div className="text-sm text-slate-700">
+                    <div className="text-sm text-slate-700 space-y-2">
                       {results.questions.map((item, i) => (
-                        <div key={i}>• {item}</div>
+                        <div key={i} className="flex items-start justify-between gap-2 p-2 border border-pink-200 rounded bg-white">
+                          <span className="flex-1">{item}</span>
+                          <button
+                            onClick={() => {
+                              const newQuestions = results.questions.filter((_, index) => index !== i);
+                              if (newQuestions.length === 0) {
+                                onDeleteField('questions');
+                              } else {
+                                onUpdateField('questions', newQuestions);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-red-500 text-lg px-1 transition-colors shrink-0"
+                            title="Delete this question"
+                          >×</button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -2671,9 +2927,23 @@ const PasteAnalyzeModal = ({
                         </svg>
                       </button>
                     </div>
-                    <div className="text-sm text-slate-700">
+                    <div className="text-sm text-slate-700 space-y-2">
                       {results.actions.map((item, i) => (
-                        <div key={i}>• {item}</div>
+                        <div key={i} className="flex items-start justify-between gap-2 p-2 border border-indigo-200 rounded bg-white">
+                          <span className="flex-1">{item}</span>
+                          <button
+                            onClick={() => {
+                              const newActions = results.actions.filter((_, index) => index !== i);
+                              if (newActions.length === 0) {
+                                onDeleteField('actions');
+                              } else {
+                                onUpdateField('actions', newActions);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-red-500 text-lg px-1 transition-colors shrink-0"
+                            title="Delete this action"
+                          >×</button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -3286,6 +3556,38 @@ export default function RequirementAnalyzer() {
       });
     }
 
+    // Acceptance Criteria
+    h("Acceptance Criteria");
+    if (!a.acceptanceCriteria || a.acceptanceCriteria.length === 0) {
+      lines.push("*No acceptance criteria defined yet.*");
+    } else {
+      const mustHave = a.acceptanceCriteria.filter(c => c.priority === "Must Have");
+      const shouldHave = a.acceptanceCriteria.filter(c => c.priority === "Should Have");
+      const niceToHave = a.acceptanceCriteria.filter(c => c.priority === "Nice to Have");
+      
+      if (mustHave.length > 0) {
+        lines.push(`\n**Must Have (${mustHave.length}):**`);
+        mustHave.forEach(c => {
+          const status = c.status === "Done" ? "✓" : c.status === "In Progress" ? "→" : "○";
+          lines.push(`- ${status} ${c.text}`);
+        });
+      }
+      if (shouldHave.length > 0) {
+        lines.push(`\n**Should Have (${shouldHave.length}):**`);
+        shouldHave.forEach(c => {
+          const status = c.status === "Done" ? "✓" : c.status === "In Progress" ? "→" : "○";
+          lines.push(`- ${status} ${c.text}`);
+        });
+      }
+      if (niceToHave.length > 0) {
+        lines.push(`\n**Nice to Have (${niceToHave.length}):**`);
+        niceToHave.forEach(c => {
+          const status = c.status === "Done" ? "✓" : c.status === "In Progress" ? "→" : "○";
+          lines.push(`- ${status} ${c.text}`);
+        });
+      }
+    }
+
     // Visual References
     h("Visual References & Mapping");
     if (a.mapping?.figmaUrl) {
@@ -3522,7 +3824,7 @@ export default function RequirementAnalyzer() {
           if (!value) return currentValue;
           
           const mergeMode = pasteMergeModes[fieldName] || 'replace';
-          if (!currentValue || currentValue.trim() === '') {
+          if (!currentValue || (typeof currentValue === 'string' && currentValue.trim() === '')) {
             return value;
           }
           
@@ -3606,6 +3908,16 @@ export default function RequirementAnalyzer() {
         if (pasteResults.questions && Array.isArray(pasteResults.questions)) {
           updated.questions = [...updated.questions, ...pasteResults.questions];
         }
+        if (pasteResults.acceptanceCriteria && Array.isArray(pasteResults.acceptanceCriteria)) {
+          const newCriteria = pasteResults.acceptanceCriteria.map(text => ({ 
+            id: generateId(), 
+            text, 
+            priority: "Must Have", 
+            status: "Not Started",
+            notes: "" 
+          }));
+          updated.acceptanceCriteria = [...(updated.acceptanceCriteria || []), ...newCriteria];
+        }
         if (pasteResults.actions && Array.isArray(pasteResults.actions)) {
           const newActions = pasteResults.actions.map(text => ({ id: generateId(), text, completed: false }));
           updated.actions = [...(updated.actions || []), ...newActions];
@@ -3640,6 +3952,13 @@ export default function RequirementAnalyzer() {
       const updated = { ...prev };
       delete updated[fieldName];
       return updated;
+    });
+  };
+
+  const handleUpdatePasteField = (fieldName, value) => {
+    setPasteResults(prev => {
+      if (!prev) return prev;
+      return { ...prev, [fieldName]: value };
     });
   };
 
@@ -3887,6 +4206,7 @@ export default function RequirementAnalyzer() {
       case "assumptions": return <AssumptionsSection data={active.assumptions} language={lang} onChange={(v) => updateActive("assumptions", v)} />;
       case "edges": return <EdgeCasesSection data={active.edges} language={lang} onChange={(v) => updateActive("edges", v)} />;
       case "scope": return <ScopeSection data={active.scope} language={lang} onChange={(v) => updateActive("scope", v)} />;
+      case "acceptance": return <AcceptanceCriteriaSection data={active.acceptanceCriteria || []} language={lang} onChange={(v) => updateActive("acceptanceCriteria", v)} />;
       case "questions": return <QuestionsSection data={active.questions} language={lang} onChange={(v) => updateActive("questions", v)} />;
       case "notes": return <NotesSection data={active.notes} language={lang} onChange={(v) => updateActive("notes", v)} />;
       case "mapping": return <MappingSection data={active.mapping || { figmaUrl: "" }} language={lang} onChange={(v) => updateActive("mapping", v)} />;
@@ -3952,7 +4272,7 @@ export default function RequirementAnalyzer() {
                   }`}
                 >
                   {a.jiraTicket && (
-                    <div className="text-[10px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-1">
+                    <div className="text-[10px] font-semibold tracking-wider text-slate-600 dark:text-slate-400 uppercase mb-1">
                       {a.jiraTicket}
                     </div>
                   )}
@@ -4268,6 +4588,7 @@ export default function RequirementAnalyzer() {
           githubAIKey={githubAIKey}
           onSetGitHubAIKey={setGitHubAIKey}
           onDeleteField={handleDeletePasteField}
+          onUpdateField={handleUpdatePasteField}
           activeAnalysis={active}
           mergeModes={pasteMergeModes}
           onSetMergeMode={handleSetPasteMergeMode}
